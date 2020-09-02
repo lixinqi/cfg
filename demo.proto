@@ -1,0 +1,33 @@
+syntax="proto2";
+
+enum Enum {
+  kInvalidEnum = 1;
+  kEnum0 = 2;
+}
+
+enum AEnum {
+  kInvalidAEnum = 1;
+  kAEnum0 = 2;
+}
+
+message Bar {
+  required string nickname = 1;
+}
+
+message Foo {
+  required string name = 1 [default="unnamed"];
+  repeated int64 card_ids = 2; 
+  repeated string card_strings = 100; 
+  repeated Bar card_bars = 101; 
+  repeated Enum card_enums = 102; 
+  map<int64, Bar> id2id_map = 3; 
+  required Bar bar = 4;
+  oneof type {
+    int64 int64_value = 20;
+    float float_value = 21;
+    Bar bar_value = 23;
+  }
+}
+
+message Alice {
+}
