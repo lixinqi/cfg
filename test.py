@@ -1,0 +1,10 @@
+import demo
+foo = demo.Foo()
+print("---------[ default value ]--------")
+print("foo.name():", foo.name())
+print("foo.bar().nickname():", foo.bar().nickname())
+print("---------[ set value ]--------")
+foo.set_name("Jonathan")
+foo.mutable_bar().set_nickname("Jonty")
+print("foo.name():", foo.name())
+print("foo.bar().nickname():", foo.bar().nickname())

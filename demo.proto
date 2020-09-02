@@ -5,32 +5,22 @@ enum Enum {
   kEnum0 = 2;
 }
 
-enum AEnum {
-  kInvalidAEnum = 1;
-  kAEnum0 = 2;
-}
-
 message Bar {
   optional string nickname = 1 [default = "undefined-nickname"];
 }
 
 message Foo {
-  required string name = 1 [default="unnamed"];
-  repeated int64 card_ids = 2; 
-  required int64 required_int64 = 3; 
-  repeated string card_strings = 100; 
-  optional int32 optional_int32 = 98 [default = -1]; 
-  optional Bar optional_bar = 99; 
-  repeated Bar card_bars = 101; 
-  repeated Enum card_enums = 102; 
-  map<int64, Bar> id2id_map = 103; 
-  required Bar bar = 104;
-  oneof type {
-    int64 int64_value = 20;
-    float float_value = 21;
-    Bar bar_value = 23;
-  }
-}
-
-message Alice {
+  optional string name = 1 [default="unnamed"];
+  required int64 int_value = 10; 
+  optional int64 opt_int_value = 11; 
+  repeated int64 int_values = 12; 
+  required string string_value = 50; 
+  optional string opt_string_value = 51; 
+  repeated string string_values = 52; 
+  required Bar bar = 100;
+  optional Bar optional_bar = 101; 
+  repeated Bar bars = 102; 
+  required Enum enum_value = 103; 
+  optional Enum opt_enum_value = 104; 
+  repeated Enum enum_values = 105; 
 }
