@@ -3,8 +3,9 @@ import proto_reflect_util
 import os
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def JinjaRender(module, filename): 
+def JinjaRender(module, filename, **kwargs): 
     j2_env = Environment(loader=FileSystemLoader(THIS_DIR), trim_blocks=True)
     return j2_env.get_template(filename).render(
-            module=module,
-            util=proto_reflect_util)
+            module=module.DESCRIPTOR,
+            util=proto_reflect_util,
+            **kwargs)

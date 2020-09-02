@@ -1,4 +1,4 @@
 import render
 import demo_pb2 as demo
 
-print(render.JinjaRender(demo, "template.cpp"))
+print(render.JinjaRender(demo, "template.cfg.cpp"))

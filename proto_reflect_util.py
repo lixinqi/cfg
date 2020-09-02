@@ -1,8 +1,25 @@
+import re
+
+def module_dependencies(module):
+    return module.dependencies
+
+def module_has_package(module):
+    return module.package != ""
+
+def module_package_list(module):
+    return filter(lambda x: len(x) > 0, module.package.split("."))
+
+def module_cfg_header_name(module):
+    return module.name[0:-5] + "cfg.h"
+
+def module_header_macro_lock(module):
+    return "CFG_%s_"% re.sub("[^a-zA-Z0-9]", "_", module_cfg_header_name(module)).upper()
+
 def module_enum_types(module):
-    return module.DESCRIPTOR.enum_types_by_name.values()
+    return module.enum_types_by_name.values()
 
 def module_message_types(module):
-    return module.DESCRIPTOR.message_types_by_name.values()
+    return module.message_types_by_name.values()
 
 def enum_name(enum):
     return enum.name
@@ -25,7 +42,10 @@ def field_has_required_label(field):
 def field_has_optional_label(field):
     return field.label == field.LABEL_OPTIONAL and not field_in_oneof(field)
 
-def field_is_repeated(field):
+def field_has_required_or_optional_label(field):
+    return field_has_required_label(field) or field_has_optional_label(field)
+
+def field_has_repeated_label(field):
     return field.label == field.LABEL_REPEATED and not _field_is_map_entry(field)
 
 def field_is_map(field):
@@ -33,6 +53,14 @@ def field_is_map(field):
 
 def field_in_oneof(field):
     return field.containing_oneof is not None
+
+def field_has_default_value(field):
+    return field.has_default_value
+
+def field_default_value_literal(field):
+    if field.cpp_type == field.CPPTYPE_STRING:
+        return '"%s"' % field.default_value
+    return field.default_value
 
 def field_name(field):
     return field.name
@@ -45,6 +73,12 @@ def field_message_type_name(field):
 
 def field_is_enum_type(field):
     return field.enum_type is not None
+
+def field_repeated_scalar_container_name(field):
+    return "RepeatedScalarContainer_" + field.name
+
+def field_repeated_composite_container_name(field):
+    return "RepeatedCompositeContainer_" + field.name
 
 def field_scalar_type_name(field):
     if field.cpp_type == field.CPPTYPE_BOOL:

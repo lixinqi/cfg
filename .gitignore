@@ -1,0 +1,10 @@
+__pycache__
+a.out
+*.o
+*.so
+*.cfg.h
+*.cfg.cpp
+*.pybind.cpp
+*.pb.h
+*.pb.cc
+*_pb2.py
