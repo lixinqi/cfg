@@ -11,7 +11,7 @@ message Foo {
 }
 
 ```
-This project enables you manipulating naive c++ object via python code
+This project enables you manipulating naive c++ object by python code
 ```python
 import demo
 foo = demo.Foo()
