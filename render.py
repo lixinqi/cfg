@@ -7,5 +7,5 @@ def JinjaRender(module, filename, **kwargs):
     j2_env = Environment(loader=FileSystemLoader(THIS_DIR), trim_blocks=True)
     return j2_env.get_template(filename).render(
             module=module.DESCRIPTOR,
-            util=proto_reflect_util,
+            util=proto_reflect_util.ProtoReflectionUtil(),
             **kwargs)

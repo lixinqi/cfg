@@ -6,6 +6,7 @@
 {% for dependency in util.module_dependencies(module) %}
 #include "{{ util.module_cfg_header_name(dependency) }}"
 {% endfor %}
+#include "repeated_field.h"
 
 {% for package in util.module_package_list(module) %}
 namespace {{ package }} {
@@ -19,141 +20,330 @@ enum {{ util.enum_name(enm) }} {
 {% endfor %}
 };
 
-std::string {{ util.enum_name(enm) }}_Name({{ util.enum_name(enm) }} value);
-
+inline ::std::string {{ util.enum_name(enm) }}_Name({{ util.enum_name(enm) }} value) {
+  switch (value) {
+{% for value in util.enum_values(enm) %}
+  case {{ util.enum_value_name(value) }}: { return "{{ util.enum_value_name(value) }}"; }
 {% endfor %}
+  default:
+    return "";
+  }
+}
+
+{% endfor %}{# enm #}
 
 {% for cls in util.module_message_types(module) %}
+{% for field in util.message_type_fields(cls) %}
+{# no duplicated class defined for each repeated field type #}
+{% if util.field_has_repeated_label(field) and util.add_visited_repeated_field_type_name(field) %}
+class {{ util.field_repeated_container_name(field) }};
+// inheritance is helpful for avoid container iterator boilerplate 
+class Const{{ util.field_repeated_container_name(field) }} : public ::oneflow::cfg::_RepeatedField_<{{ util.field_type_name(field) }}> {
+ public:
+  Const{{ util.field_repeated_container_name(field) }}(const ::std::shared_ptr<::std::vector<{{ util.field_type_name(field) }}>>& data): ::oneflow::cfg::_RepeatedField_<{{ util.field_type_name(field) }}>(data) {}
+  Const{{ util.field_repeated_container_name(field) }}() = default;
+  ~Const{{ util.field_repeated_container_name(field) }}() = default;
+
+  // used by pybind11 only
+  ::std::shared_ptr<Const{{ util.field_repeated_container_name(field) }}> __SharedConst__() const {
+    return ::std::make_shared<Const{{ util.field_repeated_container_name(field) }}>(__SharedPtr__());
+  }
+  // an analogue to const_cast<T>()
+  ::std::shared_ptr<{{ util.field_repeated_container_name(field) }}> __ConstCast__();
+{% if util.field_is_message_type(field) %}
+  ::std::shared_ptr<Const{{ util.field_type_name(field) }}> __SharedConst__(::std::size_t index) const {
+    return Get(index).__SharedConst__();
+  }
+{% endif %}{# message_type #}
+};
+class {{ util.field_repeated_container_name(field) }} final : public Const{{ util.field_repeated_container_name(field) }} {
+ public:
+  {{ util.field_repeated_container_name(field) }}(const ::std::shared_ptr<::std::vector<{{ util.field_type_name(field) }}>>& data): Const{{ util.field_repeated_container_name(field) }}(data) {}
+  {{ util.field_repeated_container_name(field) }}() = default;
+  ~{{ util.field_repeated_container_name(field) }}() = default;
+  void CopyFrom(const Const{{ util.field_repeated_container_name(field) }}& other) {
+    ::oneflow::cfg::_RepeatedField_<{{ util.field_type_name(field) }}>::CopyFrom(other);
+  }
+  void CopyFrom(const {{ util.field_repeated_container_name(field) }}& other) {
+    ::oneflow::cfg::_RepeatedField_<{{ util.field_type_name(field) }}>::CopyFrom(other);
+  }
+  // used by pybind11 only
+  ::std::shared_ptr<{{ util.field_repeated_container_name(field) }}> __SharedMutable__() {
+    return ::std::make_shared<{{ util.field_repeated_container_name(field) }}>(__SharedPtr__());
+  }
+{% if util.field_is_message_type(field) %}
+  ::std::shared_ptr<{{ util.field_type_name(field) }}> __SharedAdd__() {
+    return Add()->__SharedMutable__();
+  }
+  ::std::shared_ptr<{{ util.field_type_name(field) }}> __SharedMutable__(::std::size_t index) {
+    return Mutable(index)->__SharedMutable__();
+  }
+{% endif %}{# message_type #}
+};
+inline ::std::shared_ptr<{{ util.field_repeated_container_name(field) }}> Const{{ util.field_repeated_container_name(field) }}::__ConstCast__() {
+  return ::std::make_shared<{{ util.field_repeated_container_name(field) }}>(__SharedPtr__());
+}
+{% endif  %}{# repeated #}
+{% endfor %}{# field #}
+
+class _{{ cls.name }}_ {
+ public:
+  _{{ cls.name }}_() { Clear(); }
+  explicit _{{ cls.name }}_(const _{{ cls.name }}_& other) { CopyFrom(other); }
+  explicit _{{ cls.name }}_(_{{ cls.name }}_&& other) = default;
+  ~_{{ cls.name }}_() = default;
+  void Clear() {
+{% for field in util.message_type_fields(cls) %}
+{% if util.field_has_required_or_optional_label(field) %}
+    clear_{{ util.field_name(field) }}();
+{% elif util.field_has_repeated_label(field) %}
+    clear_{{ util.field_name(field) }}();
+{% endif %}
+{% endfor %}
+  }
+  void CopyFrom(const _{{ cls.name }}_& other) {
+{% for field in util.message_type_fields(cls) %}
+{% if util.field_has_required_or_optional_label(field) %}
+    if (other.has_{{ util.field_name(field) }}()) {
+{% if util.field_is_message_type(field) %}
+      mutable_{{ util.field_name(field) }}()->CopyFrom(other.{{ util.field_name(field) }}());
+{% else %}
+      set_{{ util.field_name(field) }}(other.{{ util.field_name(field) }}());
+{% endif %}
+    } else {
+      clear_{{ util.field_name(field) }}();
+    }
+{% elif util.field_has_repeated_label(field) %}
+    mutable_{{ util.field_name(field) }}()->CopyFrom(other.{{ util.field_name(field) }}());
+{% endif %}
+{% endfor %}
+  }
+  void CopyFrom(const ::std::shared_ptr<_{{ cls.name }}_>& other) { CopyFrom(*other); }
+{% for field in util.message_type_fields(cls) %}
+
+{% if util.field_has_required_or_optional_label(field) %}
+  // optional field {{ util.field_name(field) }}
+ public:
+{% if util.field_is_message_type(field) %}
+  bool has_{{ util.field_name(field) }}() const {
+    return !({{ util.field_name(field) }}_).__Empty__();
+  }
+  const {{ util.field_type_name(field) }}& {{ util.field_name(field) }}() const {
+    return {{ util.field_name(field) }}_;
+  }
+  void clear_{{ util.field_name(field) }}() {
+    {{ util.field_name(field) }}_.Clear();
+  }
+  {{ util.field_type_name(field) }}* mutable_{{ util.field_name(field) }}() {
+    return &{{ util.field_name(field) }}_;
+  }
+{% else %}
+  bool has_{{ util.field_name(field) }}() const {
+    return has_{{ util.field_name(field) }}_;
+  }
+  const {{ util.field_type_name(field) }}& {{ util.field_name(field) }}() const {
+    if (has_{{ util.field_name(field) }}_) { return {{ util.field_name(field) }}_; }
+{% if util.field_has_default_value(field) %}
+    static const {{ util.field_type_name(field) }} default_static_value =
+      {{ util.field_default_value_literal(field) }};
+{% else %}
+    static const {{ util.field_type_name(field) }} default_static_value = {{ util.field_type_name(field) }}();
+{% endif %}
+    return default_static_value;
+  }
+  void clear_{{ util.field_name(field) }}() {
+    has_{{ util.field_name(field) }}_ = false;
+  }
+  void set_{{ util.field_name(field) }}(const {{ util.field_type_name(field) }}& value) {
+    {{ util.field_name(field) }}_ = value;
+    has_{{ util.field_name(field) }}_ = true;
+  }
+ protected:
+  bool has_{{ util.field_name(field) }}_;
+{% endif %}{# field_type #}
+ protected:
+  {{ util.field_type_name(field) }} {{ util.field_name(field) }}_;
+{% elif util.field_has_repeated_label(field) %}
+  // repeated field {{ util.field_name(field) }}
+ public:
+  ::std::size_t {{ util.field_name(field) }}_size() const {
+    return {{ util.field_name(field) }}_.size();
+  }
+  const {{ util.field_repeated_container_name(field) }}& {{ util.field_name(field) }}() const {
+    return {{ util.field_name(field) }}_;
+  }
+  const {{ util.field_type_name(field) }}& {{ util.field_name(field) }}(::std::size_t index) const {
+    return {{ util.field_name(field) }}_.Get(index);
+  }
+  void clear_{{ util.field_name(field) }}() {
+    return {{ util.field_name(field) }}_.Clear();
+  }
+  {{ util.field_repeated_container_name(field) }}* mutable_{{ util.field_name(field) }}() {
+    return  &{{ util.field_name(field) }}_;
+  }
+  {{ util.field_type_name(field) }}* mutable_{{ util.field_name(field) }}(::std::size_t index) {
+    return  {{ util.field_name(field) }}_.Mutable(index);
+  }
+{% if util.field_is_message_type(field) %}
+{% else %}
+  void add_{{ util.field_name(field) }}(const {{ util.field_type_name(field) }}& value) {
+    return {{ util.field_name(field) }}_.Add(value);
+  }
+{% endif %}{# field message type #}
+ protected:
+  {{ util.field_repeated_container_name(field) }} {{ util.field_name(field) }}_;
+{% endif %}{# label #}
+{% endfor %}{# field #}
+};
+
 class {{ cls.name }};
 class Const{{ cls.name }} {
  public:
+  Const{{ cls.name }}(const ::std::shared_ptr<_{{ cls.name }}_>& data): data_(data) {}
+  Const{{ cls.name }}(const Const{{ cls.name }}&) = default;
+  Const{{ cls.name }}(Const{{ cls.name }}&&) noexcept = default;
   Const{{ cls.name }}() = default;
   ~Const{{ cls.name }}() = default;
-{% for field in util.message_type_fields(cls) %}
 
+{% for field in util.message_type_fields(cls) %}
 {% if util.field_has_required_or_optional_label(field) %}
-  // optional field {{ util.field_name(field) }}
+  // required or optional field {{ util.field_name(field) }}
  public:
-  bool has_{{ util.field_name(field) }}() const;
+  bool has_{{ util.field_name(field) }}() const {
+    return __SharedPtrOrDefault__()->has_{{ util.field_name(field) }}();
+  }
+  const {{ util.field_type_name(field) }}& {{ util.field_name(field) }}() const {
+    return __SharedPtrOrDefault__()->{{ util.field_name(field) }}();
+  }
 {% if util.field_is_message_type(field) %}
-  const {{ util.field_message_type_name(field) }}& {{ util.field_name(field) }}() const;
-  // used by pybind11 only
-  std::shared_ptr<Const{{ util.field_message_type_name(field) }}> shared_const_{{ util.field_name(field) }}() const;
- protected:
-  const std::shared_ptr<{{ util.field_message_type_name(field) }}>& _shared_{{ util.field_name(field) }}() const;
-  std::shared_ptr<{{ util.field_message_type_name(field) }}> {{ util.field_name(field) }}_;
-{% else %}
-  const {{ util.field_scalar_type_name(field) }}& {{ util.field_name(field) }}() const;
- protected:
-  {{ util.field_scalar_type_name(field) }} {{ util.field_name(field) }}_;
-  bool has_{{ util.field_name(field) }}_;
+  ::std::shared_ptr<Const{{ util.field_type_name(field) }}> shared_const_{{ util.field_name(field) }}() {
+    // using __SharedPtr__  instead of __SharedPtrOrDefault__ to support ConstCast
+    return __SharedPtr__()->{{ util.field_name(field) }}().__SharedConst__();
+  }
 {% endif %}
 {% elif util.field_has_repeated_label(field) %}
   // repeated field {{ util.field_name(field) }}
+ public:
+  ::std::size_t {{ util.field_name(field) }}_size() const {
+    return __SharedPtrOrDefault__()->{{ util.field_name(field) }}_size();
+  }
+  const {{ util.field_repeated_container_name(field) }}& {{ util.field_name(field) }}() const {
+    return __SharedPtrOrDefault__()->{{ util.field_name(field) }}();
+  }
+  const {{ util.field_type_name(field) }}& {{ util.field_name(field) }}(::std::size_t index) const {
+    return __SharedPtrOrDefault__()->{{ util.field_name(field) }}(index);
+  }
+  ::std::shared_ptr<Const{{ util.field_repeated_container_name(field) }}> shared_const_{{ util.field_name(field) }}() {
+    // using __SharedPtr__  instead of __SharedPtrOrDefault__ to support ConstCast
+    return __SharedPtr__()->{{ util.field_name(field) }}().__SharedConst__();
+  }
 {% if util.field_is_message_type(field) %}
- public:
-  class {{ util.field_repeated_composite_container_name(field) }};
-  class Const{{ util.field_repeated_composite_container_name(field) }} : public std::vector<std::shared_ptr<{{ util.field_message_type_name(field) }}>> {
-   public:
-    Const{{ util.field_repeated_composite_container_name(field) }}() = default;
-    ~Const{{ util.field_repeated_composite_container_name(field) }}() = default;
-  };
-  class {{ util.field_repeated_composite_container_name(field) }} : public Const{{ util.field_repeated_composite_container_name(field) }} {
-   public:
-    {{ util.field_repeated_composite_container_name(field) }}() = default;
-    ~{{ util.field_repeated_composite_container_name(field) }}() = default;
-    void Clear();
-    void CopyFrom(const Const{{ util.field_repeated_composite_container_name(field) }}& other);
-    void CopyFrom(const std::shared_ptr<Const{{ util.field_repeated_composite_container_name(field) }}>& other);
-    void CopyFrom(const std::shared_ptr<{{ util.field_repeated_composite_container_name(field) }}>& other);
-    {{ util.field_message_type_name(field) }}* Add();
-    // used by pybind11 only
-    const std::shared_ptr<{{ util.field_message_type_name(field) }}>& SharedAdd();
-  };
-  std::size_t {{ util.field_name(field) }}_size() const;
-  const Const{{ util.field_repeated_composite_container_name(field) }}& {{ util.field_name(field) }}() const;
-  const {{ util.field_message_type_name(field) }}& {{ util.field_name(field) }}(int64_t index) const;
-  // used by pybind11 only
-  std::shared_ptr<Const{{ util.field_repeated_composite_container_name(field) }}> shared_const_{{ util.field_name(field) }}() const;
-  std::shared_ptr<Const{{ util.field_message_type_name(field) }}> shared_const_{{ util.field_name(field) }}(int64_t index) const;
- protected:
-  std::shared_ptr<{{ util.field_repeated_composite_container_name(field) }}> {{ util.field_name(field) }}_;
+  ::std::shared_ptr<Const{{ util.field_type_name(field) }}> shared_const_{{ util.field_name(field) }}(::std::size_t index) {
+    // using __SharedPtr__  instead of __SharedPtrOrDefault__ to support ConstCast
+    return __SharedPtr__()->{{ util.field_name(field) }}(index).__SharedConst__();
+  }
 {% else %}
- public:
-  class {{ util.field_repeated_scalar_container_name(field) }};
-  class Const{{ util.field_repeated_scalar_container_name(field) }} : public std::vector<{{ util.field_scalar_type_name(field) }}> {
-   public:
-    Const{{ util.field_repeated_scalar_container_name(field) }}() = default;
-    ~Const{{ util.field_repeated_scalar_container_name(field) }}() = default;
-  };
-  class {{ util.field_repeated_scalar_container_name(field) }} : public Const{{ util.field_repeated_scalar_container_name(field) }} {
-   public:
-    {{ util.field_repeated_scalar_container_name(field) }}() = default;
-    ~{{ util.field_repeated_scalar_container_name(field) }}() = default;
-    void Clear();
-    void CopyFrom(const Const{{ util.field_repeated_scalar_container_name(field) }}& other);
-    void CopyFrom(const std::shared_ptr<Const{{ util.field_repeated_scalar_container_name(field) }}>& other);
-    void CopyFrom(const std::shared_ptr<{{ util.field_repeated_scalar_container_name(field) }}>& other);
-  };
-  std::size_t {{ util.field_name(field) }}_size() const;
-  const Const{{ util.field_repeated_scalar_container_name(field) }}& {{ util.field_name(field) }}() const;
-  const {{ util.field_scalar_type_name(field) }}& {{ util.field_name(field) }}(int64_t index) const;
-  // used by pybind11 only
-  std::shared_ptr<Const{{ util.field_repeated_scalar_container_name(field) }}> shared_const_{{ util.field_name(field) }}() const;
- protected:
-  std::shared_ptr<{{ util.field_repeated_scalar_container_name(field) }}> {{ util.field_name(field) }}_;
-{% endif %}
-{% endif %}
+{% endif %}{# field message type #}
+{% endif %}{# field label type #}
 {% endfor %}{# field #}
+
+  bool __Empty__() const {
+    return !static_cast<bool>(data_);
+  }
+  ::std::shared_ptr<Const{{ cls.name }}> __SharedConst__() const {
+    return ::std::make_shared<Const{{ cls.name }}>(data_);
+  }
+  // an analogue to const_cast<T>()
+  ::std::shared_ptr<{{ cls.name }}> __ConstCast__();
+ protected:
+  const ::std::shared_ptr<_{{ cls.name }}_>& __SharedPtrOrDefault__() const {
+    if (data_) { return data_; }
+    static const ::std::shared_ptr<_{{ cls.name }}_> default_ptr(new _{{ cls.name }}_());
+    return default_ptr;
+  }
+  const ::std::shared_ptr<_{{ cls.name }}_>& __SharedPtr__() {
+    if (!data_) { data_.reset(new _{{ cls.name }}_()); }
+    return data_;
+  }
+  ::std::shared_ptr<_{{ cls.name }}_> data_;
 };
-class {{ cls.name }} : public Const{{ cls.name }} {
+
+class {{ cls.name }} final : public Const{{ cls.name }} {
  public:
-  {{ cls.name }}();
-  explicit {{ cls.name }}(const Const{{ cls.name }}&); 
+  {{ cls.name }}(const ::std::shared_ptr<_{{ cls.name }}_>& data): Const{{ cls.name }}(data) {}
+  {{ cls.name }}(const {{ cls.name }}& other) { CopyFrom(other); }
+  // enable nothrow for std::vector<{{ cls.name }}> resize 
+  {{ cls.name }}({{ cls.name }}&&) noexcept = default;
+  {{ cls.name }}() = default;
   ~{{ cls.name }}() = default;
-  void Clear();
-  void CopyFrom(const Const{{ cls.name }}& other);
-  void CopyFrom(const std::shared_ptr<Const{{ cls.name }}>& other);
-  void CopyFrom(const std::shared_ptr<{{ cls.name }}>& other);
-{% for field in util.message_type_fields(cls) %}
 
+  void Clear() { data_.reset(); }
+  void CopyFrom(const {{ cls.name }}& other) {
+    __SharedPtr__()->CopyFrom(*other.data_);
+  }
+  {{ cls.name }}& operator=(const {{ cls.name }}& other) {
+    CopyFrom(other);
+    return *this;
+  }
+
+{% for field in util.message_type_fields(cls) %}
 {% if util.field_has_required_or_optional_label(field) %}
-  // optional field {{ util.field_name(field) }}
+  // required or optional field {{ util.field_name(field) }}
  public:
-  void clear_{{ util.field_name(field) }}();
+  void clear_{{ util.field_name(field) }}() {
+    return __SharedPtr__()->clear_{{ util.field_name(field) }}();
+  }
 {% if util.field_is_message_type(field) %}
-  {{ util.field_message_type_name(field) }}* mutable_{{ util.field_name(field) }}();
-  // used by pybind11 only
-  const std::shared_ptr<{{ util.field_message_type_name(field) }}>& shared_mutable_{{ util.field_name(field) }}();
+  {{ util.field_type_name(field) }}* mutable_{{ util.field_name(field) }}() {
+    return __SharedPtr__()->mutable_{{ util.field_name(field) }}();
+  }
+  ::std::shared_ptr<{{ util.field_type_name(field) }}> shared_mutable_{{ util.field_name(field) }}() {
+    return mutable_{{ util.field_name(field) }}()->__SharedMutable__();
+  }
 {% else %}
-  void set_{{ util.field_name(field) }}(const {{ util.field_scalar_type_name(field) }}& value);
+  void set_{{ util.field_name(field) }}(const {{ util.field_type_name(field) }}& value) {
+    return __SharedPtr__()->set_{{ util.field_name(field) }}(value);
+  }
 {% endif %}
 {% elif util.field_has_repeated_label(field) %}
   // repeated field {{ util.field_name(field) }}
+ public:
+  void clear_{{ util.field_name(field) }}() {
+    return __SharedPtr__()->clear_{{ util.field_name(field) }}();
+  }
+  {{ util.field_repeated_container_name(field) }}* mutable_{{ util.field_name(field) }}() {
+    return __SharedPtr__()->mutable_{{ util.field_name(field) }}();
+  }
+  {{ util.field_type_name(field) }}* mutable_{{ util.field_name(field) }}(::std::size_t index) {
+    return __SharedPtr__()->mutable_{{ util.field_name(field) }}(index);
+  }
+  ::std::shared_ptr<{{ util.field_repeated_container_name(field) }}> shared_mutable_{{ util.field_name(field) }}() {
+    return mutable_{{ util.field_name(field) }}()->__SharedMutable__();
+  }
 {% if util.field_is_message_type(field) %}
- public:
-  void clear_{{ util.field_name(field) }}();
-  {{ util.field_repeated_composite_container_name(field) }}* mutable_{{ util.field_name(field) }}();
-  {{ util.field_message_type_name(field) }}* mutable_{{ util.field_name(field) }}(int64_t index);
-  // used by pybind11 only
-  const std::shared_ptr<{{ util.field_repeated_composite_container_name(field) }}>& shared_mutable_{{ util.field_name(field) }}();
-  std::shared_ptr<{{ util.field_message_type_name(field) }}> shared_mutable_{{ util.field_name(field) }}(int64_t index);
+  ::std::shared_ptr<{{ util.field_type_name(field) }}> shared_mutable_{{ util.field_name(field) }}(::std::size_t index) {
+    return mutable_{{ util.field_name(field) }}(index)->__SharedMutable__();
+  }
 {% else %}
- public:
-  void clear_{{ util.field_name(field) }}();
-  {{ util.field_repeated_scalar_container_name(field) }}* mutable_{{ util.field_name(field) }}();
-  {{ util.field_scalar_type_name(field) }}* mutable_{{ util.field_name(field) }}(int64_t index);
-  void add_{{ util.field_name(field) }}(const {{ util.field_scalar_type_name(field) }}& value);
-  // used by pybind11 only
-  const std::shared_ptr<{{ util.field_repeated_scalar_container_name(field) }}>& shared_mutable_{{ util.field_name(field) }}();
-{% endif %}
-{% endif %}
+  void add_{{ util.field_name(field) }}(const {{ util.field_type_name(field) }}& value) {
+    return __SharedPtr__()->add_{{ util.field_name(field) }}(value);
+  }
+{% endif %}{# field message type #}
+{% endif %}{# field label type #}
 {% endfor %}{# field #}
+
+  ::std::shared_ptr<{{ cls.name }}> __SharedMutable__() {
+    return ::std::make_shared<{{ cls.name }}>(__SharedPtr__());
+  }
 };
 
-{% endfor %}
+inline ::std::shared_ptr<{{ cls.name }}> Const{{ cls.name }}::__ConstCast__() {
+    return ::std::make_shared<{{ cls.name }}>(__SharedPtr__());
+}
+
+{% endfor %}{# cls #}
 }
 {% for package in util.module_package_list(module) %}
 }
-{% endfor %}
+{% endfor %}{# package #}
 #endif  // {{ util.module_header_macro_lock(module) }}
