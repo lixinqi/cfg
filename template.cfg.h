@@ -113,7 +113,6 @@ class _{{ cls.name }}_ {
 {% endif %}
 {% endfor %}
   }
-  void CopyFrom(const ::std::shared_ptr<_{{ cls.name }}_>& other) { CopyFrom(*other); }
 {% for field in util.message_type_fields(cls) %}
 
 {% if util.field_has_required_or_optional_label(field) %}
@@ -194,12 +193,15 @@ class _{{ cls.name }}_ {
 class {{ cls.name }};
 class Const{{ cls.name }} {
  public:
-  Const{{ cls.name }}(const ::std::shared_ptr<_{{ cls.name }}_>& data): data_(data) {}
+  Const{{ cls.name }}(const ::std::shared_ptr<::std::unique_ptr<_{{ cls.name }}_>>& data): data_(data) {}
   Const{{ cls.name }}(const Const{{ cls.name }}&) = default;
   Const{{ cls.name }}(Const{{ cls.name }}&&) noexcept = default;
-  Const{{ cls.name }}() = default;
+  Const{{ cls.name }}(): data_(::std::make_shared<::std::unique_ptr<_{{ cls.name }}_>>()) {}
   ~Const{{ cls.name }}() = default;
 
+  bool __Empty__() const {
+    return !*data_;
+  }
 {% for field in util.message_type_fields(cls) %}
 {% if util.field_has_required_or_optional_label(field) %}
   // required or optional field {{ util.field_name(field) }}
@@ -210,6 +212,7 @@ class Const{{ cls.name }} {
   const {{ util.field_type_name(field) }}& {{ util.field_name(field) }}() const {
     return __SharedPtrOrDefault__()->{{ util.field_name(field) }}();
   }
+  // used by pybind11 only
 {% if util.field_is_message_type(field) %}
   ::std::shared_ptr<Const{{ util.field_type_name(field) }}> shared_const_{{ util.field_name(field) }}() const {
     return {{ util.field_name(field) }}().__SharedConst__();
@@ -227,6 +230,7 @@ class Const{{ cls.name }} {
   const {{ util.field_type_name(field) }}& {{ util.field_name(field) }}(::std::size_t index) const {
     return __SharedPtrOrDefault__()->{{ util.field_name(field) }}(index);
   }
+  // used by pybind11 only
   ::std::shared_ptr<Const{{ util.field_repeated_container_name(field) }}> shared_const_{{ util.field_name(field) }}() const {
     return {{ util.field_name(field) }}().__SharedConst__();
   }
@@ -239,39 +243,49 @@ class Const{{ cls.name }} {
 {% endif %}{# field label type #}
 {% endfor %}{# field #}
 
-  bool __Empty__() const {
-    return !static_cast<bool>(data_);
-  }
   ::std::shared_ptr<Const{{ cls.name }}> __SharedConst__() const {
     return ::std::make_shared<Const{{ cls.name }}>(data_);
   }
+  int64_t __Id__() const { return reinterpret_cast<int64_t>(data_.get()); }
   // the data of `this` will be moved to the result which is mutable
   ::std::shared_ptr<{{ cls.name }}> __Move__();
  protected:
-  const ::std::shared_ptr<_{{ cls.name }}_>& __SharedPtrOrDefault__() const {
-    if (data_) { return data_; }
-    static const ::std::shared_ptr<_{{ cls.name }}_> default_ptr(new _{{ cls.name }}_());
+  const ::std::unique_ptr<_{{ cls.name }}_>& __SharedPtrOrDefault__() const {
+    if (*data_) { return *data_; }
+    static const ::std::unique_ptr<_{{ cls.name }}_> default_ptr(new _{{ cls.name }}_());
     return default_ptr;
   }
-  const ::std::shared_ptr<_{{ cls.name }}_>& __SharedPtr__() {
-    if (!data_) { data_.reset(new _{{ cls.name }}_()); }
+  const ::std::unique_ptr<_{{ cls.name }}_>& __SharedPtr__() {
+    return *__SharedUniquePtr__();
+  }
+  const ::std::shared_ptr<::std::unique_ptr<_{{ cls.name }}_>>& __SharedUniquePtr__() {
+    if (!*data_) { data_->reset(new _{{ cls.name }}_()); }
     return data_;
   }
-  ::std::shared_ptr<_{{ cls.name }}_> data_;
+  // use std::shared_ptr for sharing reference between mutable object and const object
+  // use std::unique_ptr for moving ownership 
+  ::std::shared_ptr<::std::unique_ptr<_{{ cls.name }}_>> data_;
 };
 
 class {{ cls.name }} final : public Const{{ cls.name }} {
  public:
-  {{ cls.name }}(const ::std::shared_ptr<_{{ cls.name }}_>& data): Const{{ cls.name }}(data) {}
+  {{ cls.name }}(const ::std::shared_ptr<::std::unique_ptr<_{{ cls.name }}_>>& data)
+    : Const{{ cls.name }}(data) {}
   {{ cls.name }}(const {{ cls.name }}& other) { CopyFrom(other); }
   // enable nothrow for std::vector<{{ cls.name }}> resize 
   {{ cls.name }}({{ cls.name }}&&) noexcept = default;
   {{ cls.name }}() = default;
   ~{{ cls.name }}() = default;
 
-  void Clear() { data_.reset(); }
+  void Clear() {
+    if (data_) { data_->reset(); }
+  }
   void CopyFrom(const {{ cls.name }}& other) {
-    __SharedPtr__()->CopyFrom(*other.data_);
+    if (other.__Empty__()) {
+      Clear();
+    } else {
+      __SharedPtr__()->CopyFrom(**other.data_);
+    }
   }
   {{ cls.name }}& operator=(const {{ cls.name }}& other) {
     CopyFrom(other);
@@ -289,6 +303,7 @@ class {{ cls.name }} final : public Const{{ cls.name }} {
   {{ util.field_type_name(field) }}* mutable_{{ util.field_name(field) }}() {
     return __SharedPtr__()->mutable_{{ util.field_name(field) }}();
   }
+  // used by pybind11 only
   ::std::shared_ptr<{{ util.field_type_name(field) }}> shared_mutable_{{ util.field_name(field) }}() {
     return mutable_{{ util.field_name(field) }}()->__SharedMutable__();
   }
@@ -309,10 +324,11 @@ class {{ cls.name }} final : public Const{{ cls.name }} {
   {{ util.field_type_name(field) }}* mutable_{{ util.field_name(field) }}(::std::size_t index) {
     return __SharedPtr__()->mutable_{{ util.field_name(field) }}(index);
   }
+{% if util.field_is_message_type(field) %}
+  // used by pybind11 only
   ::std::shared_ptr<{{ util.field_repeated_container_name(field) }}> shared_mutable_{{ util.field_name(field) }}() {
     return mutable_{{ util.field_name(field) }}()->__SharedMutable__();
   }
-{% if util.field_is_message_type(field) %}
   ::std::shared_ptr<{{ util.field_type_name(field) }}> shared_mutable_{{ util.field_name(field) }}(::std::size_t index) {
     return mutable_{{ util.field_name(field) }}(index)->__SharedMutable__();
   }
@@ -320,18 +336,23 @@ class {{ cls.name }} final : public Const{{ cls.name }} {
   void add_{{ util.field_name(field) }}(const {{ util.field_type_name(field) }}& value) {
     return __SharedPtr__()->add_{{ util.field_name(field) }}(value);
   }
+  // used by pybind11 only
+  ::std::shared_ptr<{{ util.field_repeated_container_name(field) }}> shared_mutable_{{ util.field_name(field) }}() {
+    return mutable_{{ util.field_name(field) }}()->__SharedMutable__();
+  }
 {% endif %}{# field message type #}
 {% endif %}{# field label type #}
 {% endfor %}{# field #}
 
   ::std::shared_ptr<{{ cls.name }}> __SharedMutable__() {
-    return ::std::make_shared<{{ cls.name }}>(__SharedPtr__());
+    return ::std::make_shared<{{ cls.name }}>(__SharedUniquePtr__());
   }
 };
 
 inline ::std::shared_ptr<{{ cls.name }}> Const{{ cls.name }}::__Move__() {
-  auto data = data_;
-  data_.reset();
+  if (__Empty__()) { return ::std::make_shared<{{ cls.name }}>(); }
+  auto data = std::make_shared<::std::unique_ptr<_{{ cls.name }}_>>();
+  *data = std::move(*data_);
   return ::std::make_shared<{{ cls.name }}>(data);
 }
 

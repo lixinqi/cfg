@@ -48,6 +48,7 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
     pybind11::class_<Const{{ cls.name }}, std::shared_ptr<Const{{ cls.name }}>> registry(m, "Const{{ cls.name }}");
     // the data of `self` will be moved to the result which is always mutable
     registry.def("Move", &Const{{ cls.name }}::__Move__);
+    registry.def("__id__", &{{ cls.name }}::__Id__);
 {% for field in util.message_type_fields(cls) %}
 
 {% if util.field_has_required_or_optional_label(field) %}
@@ -74,7 +75,8 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
     registry.def("Clear", &{{ cls.name }}::Clear);
     registry.def("CopyFrom", (void ({{ cls.name }}::*)(const Const{{ cls.name }}&))&{{ cls.name }}::CopyFrom);
     registry.def("CopyFrom", (void ({{ cls.name }}::*)(const {{ cls.name }}&))&{{ cls.name }}::CopyFrom);
-    registry.def("Move", &Const{{ cls.name }}::__Move__);
+    registry.def("Move", &{{ cls.name }}::__Move__);
+    registry.def("__id__", &{{ cls.name }}::__Id__);
 {% for field in util.message_type_fields(cls) %}
 
 {% if util.field_has_required_or_optional_label(field) %}
