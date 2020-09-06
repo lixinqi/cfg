@@ -14,8 +14,6 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
   {
     pybind11::class_<Const{{ util.field_repeated_container_name(field) }}, std::shared_ptr<Const{{ util.field_repeated_container_name(field) }}>> registry(m, "Const{{ util.field_repeated_container_name(field) }}");
     registry.def("__len__", &Const{{ util.field_repeated_container_name(field) }}::size);
-    // a python analogue to const_cast<T>()
-    registry.def("ConstCast", &Const{{ util.field_repeated_container_name(field) }}::__ConstCast__);
 {% if util.field_is_message_type(field) %}
     registry.def("__getitem__", (::std::shared_ptr<Const{{ util.field_type_name(field) }}> (Const{{ util.field_repeated_container_name(field) }}::*)(::std::size_t) const)&Const{{ util.field_repeated_container_name(field) }}::__SharedConst__);
     registry.def("Get", (::std::shared_ptr<Const{{ util.field_type_name(field) }}> (Const{{ util.field_repeated_container_name(field) }}::*)(::std::size_t) const)&Const{{ util.field_repeated_container_name(field) }}::__SharedConst__);
@@ -48,8 +46,8 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
 {% for cls in util.module_message_types(module) %}
   {
     pybind11::class_<Const{{ cls.name }}, std::shared_ptr<Const{{ cls.name }}>> registry(m, "Const{{ cls.name }}");
-    // a python analogue to const_cast<T>()
-    registry.def("ConstCast", &Const{{ cls.name }}::__ConstCast__);
+    // the data of `self` will be moved to the result which is always mutable
+    registry.def("Move", &Const{{ cls.name }}::__Move__);
 {% for field in util.message_type_fields(cls) %}
 
 {% if util.field_has_required_or_optional_label(field) %}
@@ -61,9 +59,9 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
 {% endif %}
 {% elif util.field_has_repeated_label(field) %}
     registry.def("{{ util.field_name(field) }}_size", &Const{{ cls.name }}::{{ util.field_name(field) }}_size);
-    registry.def("{{ util.field_name(field) }}", (::std::shared_ptr<Const{{ util.field_repeated_container_name(field) }}> (Const{{ cls.name }}::*)())&Const{{ cls.name }}::shared_const_{{ util.field_name(field) }});
+    registry.def("{{ util.field_name(field) }}", (::std::shared_ptr<Const{{ util.field_repeated_container_name(field) }}> (Const{{ cls.name }}::*)() const)&Const{{ cls.name }}::shared_const_{{ util.field_name(field) }});
 {% if util.field_is_message_type(field) %}
-    registry.def("{{ util.field_name(field) }}", (::std::shared_ptr<Const{{ util.field_type_name(field) }}> (Const{{ cls.name }}::*)(::std::size_t))&Const{{ cls.name }}::shared_const_{{ util.field_name(field) }});
+    registry.def("{{ util.field_name(field) }}", (::std::shared_ptr<Const{{ util.field_type_name(field) }}> (Const{{ cls.name }}::*)(::std::size_t) const)&Const{{ cls.name }}::shared_const_{{ util.field_name(field) }});
 {% else %}
     registry.def("{{ util.field_name(field) }}", (const {{ util.field_type_name(field) }}& (Const{{ cls.name }}::*)(::std::size_t) const)&Const{{ cls.name }}::{{ util.field_name(field) }});
 {% endif %}
@@ -76,6 +74,7 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
     registry.def("Clear", &{{ cls.name }}::Clear);
     registry.def("CopyFrom", (void ({{ cls.name }}::*)(const Const{{ cls.name }}&))&{{ cls.name }}::CopyFrom);
     registry.def("CopyFrom", (void ({{ cls.name }}::*)(const {{ cls.name }}&))&{{ cls.name }}::CopyFrom);
+    registry.def("Move", &Const{{ cls.name }}::__Move__);
 {% for field in util.message_type_fields(cls) %}
 
 {% if util.field_has_required_or_optional_label(field) %}
@@ -92,9 +91,9 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
     registry.def("{{ util.field_name(field) }}_size", &{{ cls.name }}::{{ util.field_name(field) }}_size);
     registry.def("clear_{{ util.field_name(field) }}", &{{ cls.name }}::clear_{{ util.field_name(field) }});
     registry.def("mutable_{{ util.field_name(field) }}", (::std::shared_ptr<{{ util.field_repeated_container_name(field) }}> ({{ cls.name }}::*)())&{{ cls.name }}::shared_mutable_{{ util.field_name(field) }});
-    registry.def("{{ util.field_name(field) }}", (::std::shared_ptr<Const{{ util.field_repeated_container_name(field) }}> ({{ cls.name }}::*)())&{{ cls.name }}::shared_const_{{ util.field_name(field) }});
+    registry.def("{{ util.field_name(field) }}", (::std::shared_ptr<Const{{ util.field_repeated_container_name(field) }}> ({{ cls.name }}::*)() const)&{{ cls.name }}::shared_const_{{ util.field_name(field) }});
 {% if util.field_is_message_type(field) %}
-    registry.def("{{ util.field_name(field) }}", (::std::shared_ptr<Const{{ util.field_type_name(field) }}> ({{ cls.name }}::*)(::std::size_t))&{{ cls.name }}::shared_const_{{ util.field_name(field) }});
+    registry.def("{{ util.field_name(field) }}", (::std::shared_ptr<Const{{ util.field_type_name(field) }}> ({{ cls.name }}::*)(::std::size_t) const)&{{ cls.name }}::shared_const_{{ util.field_name(field) }});
     registry.def("mutable_{{ util.field_name(field) }}", (::std::shared_ptr<{{ util.field_type_name(field) }}> ({{ cls.name }}::*)(::std::size_t))&{{ cls.name }}::shared_mutable_{{ util.field_name(field) }});
 {% else %}
     registry.def("{{ util.field_name(field) }}", (const {{ util.field_type_name(field) }}& ({{ cls.name }}::*)(::std::size_t) const)&{{ cls.name }}::{{ util.field_name(field) }});

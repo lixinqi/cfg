@@ -48,8 +48,6 @@ class Const{{ util.field_repeated_container_name(field) }} : public ::oneflow::c
   ::std::shared_ptr<Const{{ util.field_repeated_container_name(field) }}> __SharedConst__() const {
     return ::std::make_shared<Const{{ util.field_repeated_container_name(field) }}>(__SharedPtr__());
   }
-  // an analogue to const_cast<T>()
-  ::std::shared_ptr<{{ util.field_repeated_container_name(field) }}> __ConstCast__();
 {% if util.field_is_message_type(field) %}
   ::std::shared_ptr<Const{{ util.field_type_name(field) }}> __SharedConst__(::std::size_t index) const {
     return Get(index).__SharedConst__();
@@ -80,9 +78,6 @@ class {{ util.field_repeated_container_name(field) }} final : public Const{{ uti
   }
 {% endif %}{# message_type #}
 };
-inline ::std::shared_ptr<{{ util.field_repeated_container_name(field) }}> Const{{ util.field_repeated_container_name(field) }}::__ConstCast__() {
-  return ::std::make_shared<{{ util.field_repeated_container_name(field) }}>(__SharedPtr__());
-}
 {% endif  %}{# repeated #}
 {% endfor %}{# field #}
 
@@ -216,9 +211,8 @@ class Const{{ cls.name }} {
     return __SharedPtrOrDefault__()->{{ util.field_name(field) }}();
   }
 {% if util.field_is_message_type(field) %}
-  ::std::shared_ptr<Const{{ util.field_type_name(field) }}> shared_const_{{ util.field_name(field) }}() {
-    // using __SharedPtr__  instead of __SharedPtrOrDefault__ to support ConstCast
-    return __SharedPtr__()->{{ util.field_name(field) }}().__SharedConst__();
+  ::std::shared_ptr<Const{{ util.field_type_name(field) }}> shared_const_{{ util.field_name(field) }}() const {
+    return {{ util.field_name(field) }}().__SharedConst__();
   }
 {% endif %}
 {% elif util.field_has_repeated_label(field) %}
@@ -233,14 +227,12 @@ class Const{{ cls.name }} {
   const {{ util.field_type_name(field) }}& {{ util.field_name(field) }}(::std::size_t index) const {
     return __SharedPtrOrDefault__()->{{ util.field_name(field) }}(index);
   }
-  ::std::shared_ptr<Const{{ util.field_repeated_container_name(field) }}> shared_const_{{ util.field_name(field) }}() {
-    // using __SharedPtr__  instead of __SharedPtrOrDefault__ to support ConstCast
-    return __SharedPtr__()->{{ util.field_name(field) }}().__SharedConst__();
+  ::std::shared_ptr<Const{{ util.field_repeated_container_name(field) }}> shared_const_{{ util.field_name(field) }}() const {
+    return {{ util.field_name(field) }}().__SharedConst__();
   }
 {% if util.field_is_message_type(field) %}
-  ::std::shared_ptr<Const{{ util.field_type_name(field) }}> shared_const_{{ util.field_name(field) }}(::std::size_t index) {
-    // using __SharedPtr__  instead of __SharedPtrOrDefault__ to support ConstCast
-    return __SharedPtr__()->{{ util.field_name(field) }}(index).__SharedConst__();
+  ::std::shared_ptr<Const{{ util.field_type_name(field) }}> shared_const_{{ util.field_name(field) }}(::std::size_t index) const {
+    return {{ util.field_name(field) }}(index).__SharedConst__();
   }
 {% else %}
 {% endif %}{# field message type #}
@@ -253,8 +245,8 @@ class Const{{ cls.name }} {
   ::std::shared_ptr<Const{{ cls.name }}> __SharedConst__() const {
     return ::std::make_shared<Const{{ cls.name }}>(data_);
   }
-  // an analogue to const_cast<T>()
-  ::std::shared_ptr<{{ cls.name }}> __ConstCast__();
+  // the data of `this` will be moved to the result which is mutable
+  ::std::shared_ptr<{{ cls.name }}> __Move__();
  protected:
   const ::std::shared_ptr<_{{ cls.name }}_>& __SharedPtrOrDefault__() const {
     if (data_) { return data_; }
@@ -337,8 +329,10 @@ class {{ cls.name }} final : public Const{{ cls.name }} {
   }
 };
 
-inline ::std::shared_ptr<{{ cls.name }}> Const{{ cls.name }}::__ConstCast__() {
-    return ::std::make_shared<{{ cls.name }}>(__SharedPtr__());
+inline ::std::shared_ptr<{{ cls.name }}> Const{{ cls.name }}::__Move__() {
+  auto data = data_;
+  data_.reset();
+  return ::std::make_shared<{{ cls.name }}>(data);
 }
 
 {% endfor %}{# cls #}
