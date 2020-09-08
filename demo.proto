@@ -23,4 +23,7 @@ message Foo {
   required Enum enum_value = 103; 
   optional Enum opt_enum_value = 104; 
   repeated Enum enum_values = 105; 
+  map<int64, int64> map_int_int = 106;
+  map<int64, int64> map_temp = 107;
+  map<int64, Bar> map_bar = 108;
 }

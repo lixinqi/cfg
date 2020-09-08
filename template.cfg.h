@@ -7,6 +7,7 @@
 #include "{{ util.module_cfg_header_name(dependency) }}"
 {% endfor %}
 #include "repeated_field.h"
+#include "map_field.h"
 
 {% for package in util.module_package_list(module) %}
 namespace {{ package }} {
@@ -79,6 +80,63 @@ class {{ util.field_repeated_container_name(field) }} final : public Const{{ uti
 {% endif %}{# message_type #}
 };
 {% endif  %}{# repeated #}
+
+
+{# map begin #}
+{% if util.field_is_map(field) and util.add_visited_map_field_type_name(field) %}
+
+class {{ util.field_map_container_name(field) }};
+// inheritance is helpful for avoid container iterator boilerplate 
+class Const{{ util.field_map_container_name(field) }} : public ::oneflow::cfg::_MapField_<{{ util.field_map_pair_type_name(field) }}> {
+ public:
+  Const{{ util.field_map_container_name(field) }}(const ::std::shared_ptr<::std::map<{{ util.field_map_pair_type_name(field) }}>>& data): ::oneflow::cfg::_MapField_<{{ util.field_map_pair_type_name(field) }}>(data) {}
+  Const{{ util.field_map_container_name(field) }}() = default;
+  ~Const{{ util.field_map_container_name(field) }}() = default;
+
+  // used by pybind11 only
+  const {{ util.field_map_value_type_name(field) }}& Get(const {{ util.field_map_key_type_name(field) }}& key) const {
+    return at(key);
+  }
+
+  ::std::shared_ptr<Const{{ util.field_map_container_name(field) }}> __SharedConst__() const {
+    return ::std::make_shared<Const{{ util.field_map_container_name(field) }}>(__SharedPtr__());
+  }
+{% if util.field_is_message_type(util.field_map_value_type(field)) %}
+  ::std::shared_ptr<Const{{ util.field_map_value_type_name(field) }}> __SharedConst__(const {{ util.field_map_key_type_name(field) }}& key) const {
+    return at(key).__SharedConst__();
+  }
+{% endif %}{# message_type #}
+};
+class {{ util.field_map_container_name(field) }} final : public Const{{ util.field_map_container_name(field) }} {
+ public:
+  {{ util.field_map_container_name(field) }}(const ::std::shared_ptr<::std::map<{{ util.field_map_pair_type_name(field) }}>>& data): Const{{ util.field_map_container_name(field) }}(data) {}
+  {{ util.field_map_container_name(field) }}() = default;
+  ~{{ util.field_map_container_name(field) }}() = default;
+  void CopyFrom(const Const{{ util.field_map_container_name(field) }}& other) {
+    ::oneflow::cfg::_MapField_<{{ util.field_map_pair_type_name(field) }}>::CopyFrom(other);
+  }
+  void CopyFrom(const {{ util.field_map_container_name(field) }}& other) {
+    ::oneflow::cfg::_MapField_<{{ util.field_map_pair_type_name(field) }}>::CopyFrom(other);
+  }
+  // used by pybind11 only
+  ::std::shared_ptr<{{ util.field_map_container_name(field) }}> __SharedMutable__() {
+    return ::std::make_shared<{{ util.field_map_container_name(field) }}>(__SharedPtr__());
+  }
+
+{% if util.field_is_message_type(util.field_map_value_type(field)) %}
+  ::std::shared_ptr<{{ util.field_map_value_type_name(field) }}> __SharedMutable__(const {{ util.field_map_key_type_name(field) }}& key) {
+    return (*this)[key].__SharedMutable__();
+  }
+{% else %}
+  void Set(const {{ util.field_map_key_type_name(field) }}& key, const {{ util.field_map_value_type_name(field) }}& value) {
+    (*this)[key] = value;
+  }
+{% endif %}{# message_type #}
+{# message_type #}
+};
+{% endif  %}{# map end #}
+
+
 {% endfor %}{# field #}
 
 class _{{ cls.name }}_ {
@@ -91,7 +149,7 @@ class _{{ cls.name }}_ {
 {% for field in util.message_type_fields(cls) %}
 {% if util.field_has_required_or_optional_label(field) %}
     clear_{{ util.field_name(field) }}();
-{% elif util.field_has_repeated_label(field) %}
+{% elif util.field_has_repeated_label(field) or util.field_is_map(field) %}
     clear_{{ util.field_name(field) }}();
 {% endif %}
 {% endfor %}
@@ -108,7 +166,7 @@ class _{{ cls.name }}_ {
     } else {
       clear_{{ util.field_name(field) }}();
     }
-{% elif util.field_has_repeated_label(field) %}
+{% elif util.field_has_repeated_label(field) or util.field_is_map(field) %}
     mutable_{{ util.field_name(field) }}()->CopyFrom(other.{{ util.field_name(field) }}());
 {% endif %}
 {% endfor %}
@@ -186,6 +244,38 @@ class _{{ cls.name }}_ {
 {% endif %}{# field message type #}
  protected:
   {{ util.field_repeated_container_name(field) }} {{ util.field_name(field) }}_;
+
+{% elif util.field_is_map(field) %}
+ public:
+  ::std::size_t {{ util.field_name(field) }}_size() const {
+    return {{ util.field_name(field) }}_.size();
+  }
+  const {{ util.field_map_container_name(field) }}& {{ util.field_name(field) }}() const {
+    return {{ util.field_name(field) }}_;
+  }
+
+  {{ util.field_map_container_name(field) }} * mutable_{{ util.field_name(field) }}() {
+    {{ util.field_map_container_name(field) }} * p = &{{ util.field_name(field) }}_;
+    return p;
+  }
+
+  const {{ util.field_map_value_type_name(field) }}& {{ util.field_name(field) }}({{ util.field_map_key_type_name(field) }} key) const {
+    return {{ util.field_name(field) }}_.at(key);
+  }
+
+  void clear_{{ util.field_name(field) }}() {
+    return {{ util.field_name(field) }}_.Clear();
+  }
+
+{% if util.field_is_message_type(field) %}
+{% else %}
+  void add_{{ util.field_name(field) }}(const {{ util.field_type_name(field) }}& value) {
+    return {{ util.field_name(field) }}_.Add(value);
+  }
+{% endif %}{# field message type #}
+ protected:
+  {{ util.field_map_container_name(field) }} {{ util.field_name(field) }}_;
+
 {% endif %}{# label #}
 {% endfor %}{# field #}
 };
@@ -240,6 +330,26 @@ class Const{{ cls.name }} {
   }
 {% else %}
 {% endif %}{# field message type #}
+
+{# map begin#}
+{% elif util.field_is_map(field) %}
+  // map field {{ util.field_name(field) }}
+ public:
+  ::std::size_t {{ util.field_name(field) }}_size() const {
+    return __SharedPtrOrDefault__()->{{ util.field_name(field) }}_size();
+  }
+
+  const {{ util.field_map_container_name(field) }}& {{ util.field_name(field) }}() const {
+    return __SharedPtrOrDefault__()->{{ util.field_name(field) }}();
+  }
+
+  // used by pybind11 only
+  ::std::shared_ptr<Const{{ util.field_map_container_name(field) }}> shared_const_{{ util.field_name(field) }}() const {
+    return {{ util.field_name(field) }}().__SharedConst__();
+  }
+
+{# map end#}
+
 {% endif %}{# field label type #}
 {% endfor %}{# field #}
 
@@ -341,6 +451,29 @@ class {{ cls.name }} final : public Const{{ cls.name }} {
     return mutable_{{ util.field_name(field) }}()->__SharedMutable__();
   }
 {% endif %}{# field message type #}
+
+{# map begin#}
+{% elif util.field_is_map(field) %}
+  // repeated field {{ util.field_name(field) }}
+ public:
+  void clear_{{ util.field_name(field) }}() {
+    return __SharedPtr__()->clear_{{ util.field_name(field) }}();
+  }
+
+  const {{ util.field_map_container_name(field) }} & {{ util.field_name(field) }}() {
+    return __SharedPtr__()->{{ util.field_name(field) }}();
+  }
+
+  {{ util.field_map_container_name(field) }}* mutable_{{ util.field_name(field) }}() {
+    return __SharedPtr__()->mutable_{{ util.field_name(field) }}();
+  }
+
+  // used by pybind11 only
+  ::std::shared_ptr<{{ util.field_map_container_name(field) }}> shared_mutable_{{ util.field_name(field) }}() {
+    return mutable_{{ util.field_name(field) }}()->__SharedMutable__();
+  }
+{# map end#}
+
 {% endif %}{# field label type #}
 {% endfor %}{# field #}
 
