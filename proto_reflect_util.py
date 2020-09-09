@@ -138,9 +138,6 @@ class ProtoReflectionUtil:
         type_name = self.field_type_name(field)
         return _ToValidVarName("_%s_RepeatedField_%s_"%(module_prefix, type_name))
 
-    def field_type_is_enum_or_numeric(self, field):
-        return self.field_is_enum_type(field) or self.field_type_is_numeric(field)
-    
     def field_map_pair_type_name_with_underline(self, field):
         return f'{self.field_map_key_type_name(field)}_{self.field_map_value_type_name(field)}'
 

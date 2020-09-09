@@ -16,7 +16,7 @@ class _SharedPairIterator_ {
   using value_type = std::pair<const key_type, mapped_type>;
   using iterator_category = typename DataIter::iterator_category;
   using self_type = _SharedPairIterator_;
-  using pointer = std::shared_ptr<value_type>;
+  using pointer = std::unique_ptr<value_type>;
   using reference = value_type;
 
   _SharedPairIterator_(DataIter data_iter)

@@ -483,8 +483,6 @@ class Const{{ cls.name }} {
   ::std::shared_ptr<Const{{ util.field_type_name(field) }}> shared_const_{{ util.field_name(field) }}() const {
     return {{ util.field_name(field) }}().__SharedConst__();
   }
-{% elif util.field_is_enum_type(field) %}
-
 {% endif %}{# field message type #}
 {# map begin#}
 {% elif util.field_is_map(field) %}
