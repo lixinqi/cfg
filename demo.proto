@@ -7,6 +7,14 @@ enum Enum {
 
 message Bar {
   optional string nickname = 1 [default = "undefined-nickname"];
+  oneof of_bar {
+    int64 of_int_value = 2;
+    float of_float_value = 3;
+  }
+}
+
+message Baz {
+  optional string bazname = 1 [default = "undefined-bazname"];
 }
 
 message Foo {
@@ -23,6 +31,21 @@ message Foo {
   required Enum enum_value = 103; 
   optional Enum opt_enum_value = 104; 
   repeated Enum enum_values = 105; 
+  oneof oneof_type {
+    Bar of_bar = 2;
+    Baz of_baz = 3;
+    string of_string_value = 4;
+    bytes of_bytes_value = 5;
+    int64 of_int_value = 6;
+    Enum of_enum_value = 7;
+  }
+  oneof oneof_expermental_type {
+    Bar of_expermental_bar = 8;
+    Baz of_expermental_baz = 9;
+    string of_expermental_string_value = 13;
+    bytes of_expermental_bytes_value = 14;
+    
+  }
   map<int64, int64> map_int_int = 106;
   map<int64, int64> map_temp = 107;
   map<int64, Bar> map_bar = 108;

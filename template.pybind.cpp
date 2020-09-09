@@ -7,6 +7,17 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
 {% else %}
   using namespace cfg;
 {% endif %}
+{% for enm in util.module_enum_types(module) %}
+  {
+    pybind11::enum_<{{ util.enum_name(enm) }}> enm(m, "{{ util.enum_name(enm) }}");
+{% for value in util.enum_values(enm) %}
+    enm.value("{{ util.enum_value_name(value) }}", {{ util.enum_value_name(value) }});
+{% endfor %}{# enum_values #}
+{% for value in util.enum_values(enm) %}
+    m.attr("{{ util.enum_value_name(value) }}") = enm.attr("{{ util.enum_value_name(value) }}");
+{% endfor %}{# enum_values #}
+  }
+{% endfor %}{# enum_types #}
 {% for cls in util.module_message_types(module) %}
 {% for field in util.message_type_fields(cls) %}
 {# no duplicated python class registered for each repeated field type #}
@@ -106,6 +117,13 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
 {% else %}
     registry.def("{{ util.field_name(field) }}", (const {{ util.field_type_name(field) }}& (Const{{ cls.name }}::*)(::std::size_t) const)&Const{{ cls.name }}::{{ util.field_name(field) }});
 {% endif %}
+{% elif util.field_has_oneof_label(field) %}
+    registry.def("has_{{ util.field_name(field) }}", &Const{{ cls.name }}::has_{{ util.field_name(field) }});
+{% if util.field_is_message_type(field) %}
+    registry.def("{{ util.field_name(field) }}", &Const{{ cls.name }}::shared_const_{{ util.field_name(field) }});
+{% else %}
+    registry.def("{{ util.field_name(field) }}", &Const{{ cls.name }}::{{ util.field_name(field) }});
+{% endif %}{# field message type #}
 
 {# map begin #}
 {% elif util.field_is_map(field) %}
@@ -118,9 +136,11 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
     registry.def("{{ util.field_name(field) }}", (const {{ util.field_map_value_type_name(field) }}& (Const{{ cls.name }}::*)(const {{ util.field_map_key_type_name(field) }}&) const)&Const{{ cls.name }}::{{ util.field_name(field) }});
 {% endif %}
 {# map end #}
-
 {% endif %}{# field label type #}
 {% endfor %}{# field #}
+{% for oneof in util.message_type_oneofs(cls) %}
+    registry.def("{{ util.oneof_name(oneof) }}_case",  &Const{{ cls.name }}::{{ util.oneof_name(oneof) }}_case);
+{% endfor %}{# oneofs #}
   }
   {
     pybind11::class_<{{ cls.name }}, std::shared_ptr<{{ cls.name }}>> registry(m, "{{ cls.name }}");
@@ -141,6 +161,9 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
 {% else %}
     registry.def("{{ util.field_name(field) }}", &{{ cls.name }}::{{ util.field_name(field) }});
     registry.def("set_{{ util.field_name(field) }}", &{{ cls.name }}::set_{{ util.field_name(field) }});
+{% if util.field_type_name(field) == "::std::string" %}
+    registry.def("mutable_{{ util.field_name(field) }}", &{{ cls.name }}::mutable_{{ util.field_name(field) }});
+{% endif %}{# field string type #}
 {% endif %}
 {% elif util.field_has_repeated_label(field) %}
     registry.def("{{ util.field_name(field) }}_size", &{{ cls.name }}::{{ util.field_name(field) }}_size);
@@ -154,7 +177,20 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
     registry.def("{{ util.field_name(field) }}", (const {{ util.field_type_name(field) }}& ({{ cls.name }}::*)(::std::size_t) const)&{{ cls.name }}::{{ util.field_name(field) }});
     registry.def("add_{{ util.field_name(field) }}", &{{ cls.name }}::add_{{ util.field_name(field) }});
 {% endif %}{# field message type #}
-
+{% elif util.field_has_oneof_label(field) %}
+    registry.def("has_{{ util.field_name(field) }}", &{{ cls.name }}::has_{{ util.field_name(field) }});
+    registry.def("clear_{{ util.field_name(field) }}", &{{ cls.name }}::clear_{{ util.field_name(field) }});
+    registry.def_property_readonly_static("{{ util.oneof_type_field_enum_value_name(field) }}",
+        [](const pybind11::object&){ return _{{ cls.name }}_::{{ util.oneof_type_field_enum_value_name(field) }}; });
+{% if util.field_is_message_type(field) %}
+    registry.def("mutable_{{ util.field_name(field) }}", &{{ cls.name }}::shared_mutable_{{ util.field_name(field) }});
+{% else %}
+    registry.def("{{ util.field_name(field) }}", &{{ cls.name }}::{{ util.field_name(field) }});
+    registry.def("set_{{ util.field_name(field) }}", &{{ cls.name }}::set_{{ util.field_name(field) }});
+{% if util.field_type_name(field) == "::std::string" %}
+    registry.def("mutable_{{ util.field_name(field) }}", &{{ cls.name }}::mutable_{{ util.field_name(field) }});
+{% endif %}{# field string type #}
+{% endif %}{# field_message_type #}
 {# map begin #}
 {% elif util.field_is_map(field) %}
     registry.def("{{ util.field_name(field) }}_size", &{{ cls.name }}::{{ util.field_name(field) }}_size);
@@ -167,9 +203,17 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
     registry.def("{{ util.field_name(field) }}", (const {{ util.field_map_value_type_name(field) }}& ({{ cls.name }}::*)(const {{ util.field_map_key_type_name(field) }}&) const)&{{ cls.name }}::{{ util.field_name(field) }});
 {% endif %}
 {# map end #}
-
 {% endif %}{# field label type #}
 {% endfor %}{# field #}
+{% for oneof in util.message_type_oneofs(cls) %}
+    pybind11::enum_<_{{ cls.name }}_::{{ util.oneof_enum_name(oneof) }}>(registry, "{{ util.oneof_enum_name(oneof) }}")
+        .value("{{ util.oneof_name(oneof).upper() }}_NOT_SET", _{{ cls.name }}_::{{ util.oneof_name(oneof).upper() }}_NOT_SET)
+{% for field in util.oneof_type_fields(oneof) %}
+        .value("{{ util.oneof_type_field_enum_value_name(field) }}", _{{ cls.name }}_::{{ util.oneof_type_field_enum_value_name(field) }})
+{% endfor %}{# oneof_fields #}
+        ;
+    registry.def("{{ util.oneof_name(oneof) }}_case",  &{{ cls.name }}::{{ util.oneof_name(oneof) }}_case);
+{% endfor %}{# oneofs #}
   }
 {% endfor %}{# cls #}
 }

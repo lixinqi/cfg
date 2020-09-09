@@ -13,17 +13,17 @@ template<typename T>
 class _RepeatedField_ {
  public:
   static_assert(std::is_nothrow_move_constructible<T>::value, "");
-  using value_type = T;
-  using size_type = std::size_t;
-  using difference_type = std::ptrdiff_t;
-  using reference = value_type&;
-  using const_reference = const value_type&;
-  using pointer = T*;
-  using const_pointer = const T*;
+  using value_type = typename std::vector<T>::value_type;
+  using size_type = typename std::vector<T>::size_type;
+  using difference_type = typename std::vector<T>::difference_type;
+  using reference = typename std::vector<T>::reference;
+  using const_reference = typename std::vector<T>::const_reference;
+  using pointer = typename std::vector<T>::pointer;
+  using const_pointer = typename std::vector<T>::const_pointer;
   using iterator = typename std::vector<T>::iterator;
   using const_iterator = typename std::vector<T>::const_iterator;
-  using reverse_iterator = std::reverse_iterator<iterator>;
-  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+  using reverse_iterator = typename std::vector<T>::reverse_iterator;
+  using const_reverse_iterator = typename std::vector<T>::const_reverse_iterator;
 
   _RepeatedField_(): data_(std::make_shared<std::vector<T>>()) {}
   _RepeatedField_(const std::shared_ptr<std::vector<T>>& data): data_(data) {}
