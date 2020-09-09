@@ -161,6 +161,9 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
 {% else %}
     registry.def("{{ util.field_name(field) }}", &{{ cls.name }}::{{ util.field_name(field) }});
     registry.def("set_{{ util.field_name(field) }}", &{{ cls.name }}::set_{{ util.field_name(field) }});
+{% if util.field_type_name(field) == "::std::string" %}
+    registry.def("mutable_{{ util.field_name(field) }}", &{{ cls.name }}::mutable_{{ util.field_name(field) }});
+{% endif %}{# field string type #}
 {% endif %}
 {% elif util.field_has_repeated_label(field) %}
     registry.def("{{ util.field_name(field) }}_size", &{{ cls.name }}::{{ util.field_name(field) }}_size);
@@ -184,6 +187,9 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
 {% else %}
     registry.def("{{ util.field_name(field) }}", &{{ cls.name }}::{{ util.field_name(field) }});
     registry.def("set_{{ util.field_name(field) }}", &{{ cls.name }}::set_{{ util.field_name(field) }});
+{% if util.field_type_name(field) == "::std::string" %}
+    registry.def("mutable_{{ util.field_name(field) }}", &{{ cls.name }}::mutable_{{ util.field_name(field) }});
+{% endif %}{# field string type #}
 {% endif %}{# field_message_type #}
 {# map begin #}
 {% elif util.field_is_map(field) %}

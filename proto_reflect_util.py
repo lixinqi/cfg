@@ -140,30 +140,6 @@ class ProtoReflectionUtil:
 
     def field_type_is_enum_or_numeric(self, field):
         return self.field_is_enum_type(field) or self.field_type_is_numeric(field)
-
-    def field_type_is_string(self, field):
-        return field.type == field.TYPE_STRING or field.type == field.TYPE_BYTES
-    
-    def field_is_enum_type(self, field):
-        return field.enum_type is not None
-    
-    def field_type_is_numeric(self, field):
-        if field.cpp_type == field.CPPTYPE_DOUBLE:
-            return True
-        elif field.cpp_type == field.CPPTYPE_FLOAT:
-            return True
-        elif field.cpp_type == field.CPPTYPE_INT32:
-            return True
-        elif field.cpp_type == field.CPPTYPE_INT64:
-            return True
-        elif field.cpp_type == field.CPPTYPE_INT64:
-            return True
-        elif field.cpp_type == field.CPPTYPE_UINT32:
-            return True
-        elif field.cpp_type == field.CPPTYPE_UINT64:
-            return True
-        else:
-            return False
     
     def field_map_pair_type_name_with_underline(self, field):
         return f'{self.field_map_key_type_name(field)}_{self.field_map_value_type_name(field)}'

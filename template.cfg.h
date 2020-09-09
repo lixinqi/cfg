@@ -31,13 +31,13 @@ inline ::std::string {{ util.enum_name(enm) }}_Name({{ util.enum_name(enm) }} va
     return "";
   }
 }
-
 {% endfor %}{# enm #}
 
 {% for cls in util.module_message_types(module) %}
 {% for field in util.message_type_fields(cls) %}
 {# no duplicated class defined for each repeated field type #}
 {% if util.field_has_repeated_label(field) and util.add_visited_repeated_field_type_name(field) %}
+
 class {{ util.field_repeated_container_name(field) }};
 // inheritance is helpful for avoid container iterator boilerplate 
 class Const{{ util.field_repeated_container_name(field) }} : public ::oneflow::cfg::_RepeatedField_<{{ util.field_type_name(field) }}> {
@@ -81,8 +81,6 @@ class {{ util.field_repeated_container_name(field) }} final : public Const{{ uti
 {% endif %}{# message_type #}
 };
 {% endif  %}{# repeated #}
-
-
 {# map begin #}
 {% if util.field_is_map(field) and util.add_visited_map_field_type_name(field) %}
 
@@ -150,8 +148,6 @@ class {{ util.field_map_container_name(field) }} final : public Const{{ util.fie
 {# message_type #}
 };
 {% endif  %}{# map end #}
-
-
 {% endfor %}{# field #}
 
 class _{{ cls.name }}_ {
@@ -241,6 +237,12 @@ class _{{ cls.name }}_ {
     {{ util.field_name(field) }}_ = value;
     has_{{ util.field_name(field) }}_ = true;
   }
+{% if util.field_type_name(field) == "::std::string" %}
+  ::std::string* mutable_{{ util.field_name(field) }}() {
+    has_{{ util.field_name(field) }}_ = true;
+    return &{{ util.field_name(field) }}_;
+  }
+{% endif %}{# field string type #}
  protected:
   bool has_{{ util.field_name(field) }}_;
 {% endif %}{# field_type #}
@@ -307,7 +309,7 @@ class _{{ cls.name }}_ {
     {{ util.field_oneof_name(field) }}_case_ = {{ util.oneof_type_field_enum_value_name(field) }};
     return  &{{ util.field_oneof_name(field) }}_.{{ util.field_name(field) }}_;
   }
-{% elif util.field_type_is_enum_or_numeric(field) %}
+{% else %}
   void set_{{ util.field_name(field) }}(const {{util.field_type_name(field) }}& value) {
     if(!has_{{ util.field_name(field) }}()) {
       clear_{{ util.field_oneof_name(field) }}();
@@ -315,22 +317,16 @@ class _{{ cls.name }}_ {
     {{ util.field_oneof_name(field) }}_case_ = {{ util.oneof_type_field_enum_value_name(field) }};
     {{ util.field_oneof_name(field) }}_.{{ util.field_name(field) }}_ = value;
   }
-{% elif util.field_type_is_string(field) %}
-  void set_{{ util.field_name(field) }}(const {{ util.field_type_name(field) }}& value) {
+{% if util.field_type_name(field) == "::std::string" %}
+  ::std::string* mutable_{{ util.field_name(field) }}() {
     if(!has_{{ util.field_name(field) }}()) {
       clear_{{ util.field_oneof_name(field) }}();
-    }
-    {{ util.field_oneof_name(field) }}_case_ = {{ util.oneof_type_field_enum_value_name(field) }};
-    {{ util.field_oneof_name(field) }}_.{{ util.field_name(field) }}_ = value;
-  }
-  {{ util.field_type_name(field) }}* mutable_{{ util.field_name(field) }}() {
-    if(!has_{{ util.field_name(field) }}()) {
-      clear_{{ util.field_oneof_name(field) }}();
-      {{ util.field_oneof_name(field) }}_.{{ util.field_name(field) }}_ = {{ util.field_type_name(field) }}();
+      {{ util.field_oneof_name(field) }}_.{{ util.field_name(field) }}_ = ::std::string();
     }
     {{ util.field_oneof_name(field) }}_case_ = {{ util.oneof_type_field_enum_value_name(field) }};
     return  &{{ util.field_oneof_name(field) }}_.{{ util.field_name(field) }}_;
   }
+{% endif %}{# field string type #}
 {% endif %}{# field message type #}
 {% elif util.field_is_map(field) %}
  public:
@@ -367,7 +363,7 @@ class _{{ cls.name }}_ {
 {% for oneof in util.message_type_oneofs(cls) %}
  
  public:
-  // oneof struct {{ util.oneof_name(oneof) }}
+  // oneof {{ util.oneof_name(oneof) }}
   {{ util.oneof_enum_name(oneof) }} {{ util.oneof_name(oneof) }}_case() const {
     return {{ util.oneof_name(oneof) }}_case_;
   }
@@ -584,6 +580,11 @@ class {{ cls.name }} final : public Const{{ cls.name }} {
   void set_{{ util.field_name(field) }}(const {{ util.field_type_name(field) }}& value) {
     return __SharedPtr__()->set_{{ util.field_name(field) }}(value);
   }
+{% if util.field_type_name(field) == "::std::string" %}
+  ::std::string* mutable_{{ util.field_name(field) }}() {
+    return  __SharedPtr__()->mutable_{{ util.field_name(field) }}();
+  }
+{% endif %}{# field string type #}
 {% endif %}
 {% elif util.field_has_repeated_label(field) %}
   // repeated field {{ util.field_name(field) }}
@@ -630,6 +631,11 @@ class {{ cls.name }} final : public Const{{ cls.name }} {
   void set_{{ util.field_name(field) }}(const {{ util.field_type_name(field) }}& value) {
     return __SharedPtr__()->set_{{ util.field_name(field) }}(value);
   }
+{% if util.field_type_name(field) == "::std::string" %}
+  ::std::string* mutable_{{ util.field_name(field) }}() {
+    return  __SharedPtr__()->mutable_{{ util.field_name(field) }}();
+  }
+{% endif %}{# field string type #}
 {% endif %}{# field message type #}
 
 {# map begin#}
