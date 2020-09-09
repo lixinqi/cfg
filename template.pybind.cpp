@@ -46,11 +46,15 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
   {
     pybind11::class_<Const{{ util.field_map_container_name(field) }}, std::shared_ptr<Const{{ util.field_map_container_name(field) }}>> registry(m, "Const{{ util.field_map_container_name(field) }}");
     registry.def("__len__", &Const{{ util.field_map_container_name(field) }}::size);
-    registry.def("__iter__", [](const Const{{ util.field_map_container_name(field) }} &s) { return pybind11::make_iterator(s.begin(), s.end()); }, pybind11::keep_alive<0, 1>() /* Essential: keep object alive while iterator exists */);
-    registry.def("items", [](const Const{{ util.field_map_container_name(field) }} &s) { return pybind11::make_iterator(s.begin(), s.end()); }, pybind11::keep_alive<0, 1>() /* Essential: keep object alive while iterator exists */);
 {% if util.field_is_message_type(util.field_map_value_type(field)) %}
+    // lifetime safety is ensured by making iterators for std::pair<const {{ util.field_map_key_type_name(field) }}, std::shared_ptr<Const{{ util.field_map_value_type_name(field) }}>>
+    registry.def("__iter__", [](const ::std::shared_ptr<Const{{ util.field_map_container_name(field) }}>& s) { return pybind11::make_iterator(s->shared_const_begin(), s->shared_const_end()); });
+    // lifetime safety is ensured by making iterators for std::pair<const {{ util.field_map_key_type_name(field) }}, std::shared_ptr<Const{{ util.field_map_value_type_name(field) }}>>
+    registry.def("items", [](const ::std::shared_ptr<Const{{ util.field_map_container_name(field) }}>& s) { return pybind11::make_iterator(s->shared_const_begin(), s->shared_const_end()); });
     registry.def("__getitem__", (::std::shared_ptr<Const{{ util.field_map_value_type_name(field) }}> (Const{{ util.field_map_container_name(field) }}::*)(const {{ util.field_map_key_type_name(field) }}&) const)&Const{{ util.field_map_container_name(field) }}::__SharedConst__);
 {% else %}
+    registry.def("__iter__", [](const Const{{ util.field_map_container_name(field) }} &s) { return pybind11::make_iterator(s.begin(), s.end()); }, pybind11::keep_alive<0, 1>());
+    registry.def("items", [](const Const{{ util.field_map_container_name(field) }} &s) { return pybind11::make_iterator(s.begin(), s.end()); }, pybind11::keep_alive<0, 1>());
     registry.def("__getitem__", &Const{{ util.field_map_container_name(field) }}::Get);
 {% endif %}
   }
@@ -60,12 +64,16 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
     registry.def("Clear", &{{ util.field_map_container_name(field) }}::Clear);
     registry.def("CopyFrom", (void ({{ util.field_map_container_name(field) }}::*)(const Const{{ util.field_map_container_name(field) }}&))&{{ util.field_map_container_name(field) }}::CopyFrom);
     registry.def("CopyFrom", (void ({{ util.field_map_container_name(field) }}::*)(const {{ util.field_map_container_name(field) }}&))&{{ util.field_map_container_name(field) }}::CopyFrom);
-    registry.def("__iter__", [](const {{ util.field_map_container_name(field) }} &s) { return pybind11::make_iterator(s.begin(), s.end()); }, pybind11::keep_alive<0, 1>() /* Essential: keep object alive while iterator exists */);
-    registry.def("items", [](const {{ util.field_map_container_name(field) }} &s) { return pybind11::make_iterator(s.begin(), s.end()); }, pybind11::keep_alive<0, 1>() /* Essential: keep object alive while iterator exists */);
 
 {% if util.field_is_message_type(util.field_map_value_type(field)) %}
+    // lifetime safety is ensured by making iterators for std::pair<const {{ util.field_map_key_type_name(field) }}, std::shared_ptr<{{ util.field_map_value_type_name(field) }}>>
+    registry.def("__iter__", [](const ::std::shared_ptr<{{ util.field_map_container_name(field) }}>& s) { return pybind11::make_iterator(s->shared_mut_begin(), s->shared_mut_end()); });
+    // lifetime safety is ensured by making iterators for std::pair<const {{ util.field_map_key_type_name(field) }}, std::shared_ptr<{{ util.field_map_value_type_name(field) }}>>
+    registry.def("items", [](const ::std::shared_ptr<{{ util.field_map_container_name(field) }}>& s) { return pybind11::make_iterator(s->shared_mut_begin(), s->shared_mut_end()); });
     registry.def("__getitem__", (::std::shared_ptr<{{ util.field_map_value_type_name(field) }}> ({{ util.field_map_container_name(field) }}::*)(const {{ util.field_map_key_type_name(field) }}&))&{{ util.field_map_container_name(field) }}::__SharedMutable__);
 {% else %}
+    registry.def("__iter__", [](const {{ util.field_map_container_name(field) }} &s) { return pybind11::make_iterator(s.begin(), s.end()); }, pybind11::keep_alive<0, 1>());
+    registry.def("items", [](const {{ util.field_map_container_name(field) }} &s) { return pybind11::make_iterator(s.begin(), s.end()); }, pybind11::keep_alive<0, 1>());
     registry.def("__getitem__", &{{ util.field_map_container_name(field) }}::Get);
     registry.def("__setitem__", &{{ util.field_map_container_name(field) }}::Set);
 {% endif %}

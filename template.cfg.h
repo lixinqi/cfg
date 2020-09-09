@@ -8,6 +8,7 @@
 {% endfor %}
 #include "repeated_field.h"
 #include "map_field.h"
+#include "shared_pair_iterator.h"
 
 {% for package in util.module_package_list(module) %}
 namespace {{ package }} {
@@ -98,13 +99,21 @@ class Const{{ util.field_map_container_name(field) }} : public ::oneflow::cfg::_
     return at(key);
   }
 
+  // used by pybind11 only
   ::std::shared_ptr<Const{{ util.field_map_container_name(field) }}> __SharedConst__() const {
     return ::std::make_shared<Const{{ util.field_map_container_name(field) }}>(__SharedPtr__());
   }
 {% if util.field_is_message_type(util.field_map_value_type(field)) %}
+  // used by pybind11 only
   ::std::shared_ptr<Const{{ util.field_map_value_type_name(field) }}> __SharedConst__(const {{ util.field_map_key_type_name(field) }}& key) const {
     return at(key).__SharedConst__();
   }
+  // used by pybind11 only
+  using shared_const_iterator = ::oneflow::cfg::_SharedConstPairIterator_<Const{{ util.field_map_container_name(field) }}, Const{{ util.field_map_value_type_name(field) }}>;
+  // ensuring mapped data's lifetime safety
+  shared_const_iterator shared_const_begin() { return begin(); }
+  // ensuring mapped data's lifetime safety
+  shared_const_iterator shared_const_end() { return end(); }
 {% endif %}{# message_type #}
 };
 class {{ util.field_map_container_name(field) }} final : public Const{{ util.field_map_container_name(field) }} {
@@ -127,6 +136,12 @@ class {{ util.field_map_container_name(field) }} final : public Const{{ util.fie
   ::std::shared_ptr<{{ util.field_map_value_type_name(field) }}> __SharedMutable__(const {{ util.field_map_key_type_name(field) }}& key) {
     return (*this)[key].__SharedMutable__();
   }
+  // used by pybind11 only
+  using shared_mut_iterator = ::oneflow::cfg::_SharedMutPairIterator_<{{ util.field_map_container_name(field) }}, {{ util.field_map_value_type_name(field) }}>;
+  // ensuring mapped data's lifetime safety
+  shared_mut_iterator shared_mut_begin() { return begin(); }
+  // ensuring mapped data's lifetime safety
+  shared_mut_iterator shared_mut_end() { return end(); }
 {% else %}
   void Set(const {{ util.field_map_key_type_name(field) }}& key, const {{ util.field_map_value_type_name(field) }}& value) {
     (*this)[key] = value;
