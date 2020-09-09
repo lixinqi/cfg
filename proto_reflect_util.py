@@ -3,6 +3,7 @@ import re
 class ProtoReflectionUtil:
     def __init__(self):
         self.visited_repeated_field_type_name_ = set()
+        self.visited_map_field_type_name_ = set()
 
     def module_dependencies(self, module):
         return module.dependencies
@@ -113,6 +114,18 @@ class ProtoReflectionUtil:
         if self.field_is_message_type(field):
             return self.field_message_type_name(field)
         return self.field_scalar_type_name(field)
+    
+    def field_map_key_type_name(self, field):
+        return self.field_type_name(field.message_type.fields_by_name['key'])
+
+    def field_map_value_type_name(self, field):
+        return self.field_type_name(field.message_type.fields_by_name['value'])
+
+    def field_map_value_type(self, field):
+        return field.message_type.fields_by_name['value']
+
+    def field_map_pair_type_name(self, field):
+        return f'{self.field_map_key_type_name(field)}, {self.field_map_value_type_name(field)}'
 
     def field_is_message_type(self, field):
         return field.message_type is not None
@@ -151,6 +164,14 @@ class ProtoReflectionUtil:
             return True
         else:
             return False
+    
+    def field_map_pair_type_name_with_underline(self, field):
+        return f'{self.field_map_key_type_name(field)}_{self.field_map_value_type_name(field)}'
+
+    def field_map_container_name(self, field):
+        module_prefix = self.module_header_macro_lock(field.containing_type.file)
+        type_name = self.field_map_pair_type_name_with_underline(field)
+        return _ToValidVarName("_%s_MapField_%s_"%(module_prefix, type_name))
 
     def field_scalar_type_name(self, field):
         if field.cpp_type == field.CPPTYPE_BOOL:
@@ -181,6 +202,14 @@ class ProtoReflectionUtil:
         if field_type_name in self.visited_repeated_field_type_name_:
             return False
         self.visited_repeated_field_type_name_.add(field_type_name)
+        return True
+
+    # return True if added first time
+    def add_visited_map_field_type_name(self, field):
+        field_map_pair_type_name = self.field_map_pair_type_name(field)
+        if field_map_pair_type_name in self.visited_map_field_type_name_:
+            return False
+        self.visited_map_field_type_name_.add(field_map_pair_type_name)
         return True
 
     def _field_is_map_entry(self, field):

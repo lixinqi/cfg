@@ -46,4 +46,7 @@ message Foo {
     bytes of_expermental_bytes_value = 14;
     
   }
+  map<int64, int64> map_int_int = 106;
+  map<int64, int64> map_temp = 107;
+  map<int64, Bar> map_bar = 108;
 }
