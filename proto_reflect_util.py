@@ -40,6 +40,46 @@ class ProtoReflectionUtil:
     def message_type_fields(self, cls):
         return cls.fields
 
+    def cls_has_oneofs(self, cls):
+        return self.cls_oneofs_size(cls) != 0
+
+    def cls_oneofs_size(self, cls):
+        return len(cls.oneofs)
+
+    def message_type_oneofs(self, cls):
+        return cls.oneofs
+
+    def oneof_name(self, oneof):
+        return oneof.name
+
+    def oneof_enum_name(self, oneof):
+        return self.oneof_camel_name(oneof) + "Case"
+    
+    def oneof_camel_name(self, oneof):
+        return self._underline_name_to_camel(oneof.name)
+
+    def oneof_name_of_oneof_type_field(self, field):
+        return field.containing_oneof.name
+
+    def oneof_type_fields(self, oneof):
+        return oneof.fields
+
+    def oneof_type_field_name(self, field):
+        return field.name
+
+    def oneof_type_field_enum_value_name(self, field):
+        return 'k' + self._underline_name_to_camel(field.name)
+
+    def oneof_type_field_enum_value_number(self, field):
+        return field.number
+
+    def field_has_oneof_label(self, field):
+        return field.containing_oneof is not None
+    
+    def field_oneof_name(self, field):
+        assert self.field_has_oneof_label(field)
+        return field.containing_oneof.name
+    
     def field_has_required_label(self, field):
         return field.label == field.LABEL_REQUIRED
 
@@ -85,6 +125,33 @@ class ProtoReflectionUtil:
         type_name = self.field_type_name(field)
         return _ToValidVarName("_%s_RepeatedField_%s_"%(module_prefix, type_name))
 
+    def field_type_is_enum_or_numeric(self, field):
+        return self.field_is_enum_type(field) or self.field_type_is_numeric(field)
+
+    def field_type_is_string(self, field):
+        return field.type == field.TYPE_STRING or field.type == field.TYPE_BYTES
+    
+    def field_is_enum_type(self, field):
+        return field.enum_type is not None
+    
+    def field_type_is_numeric(self, field):
+        if field.cpp_type == field.CPPTYPE_DOUBLE:
+            return True
+        elif field.cpp_type == field.CPPTYPE_FLOAT:
+            return True
+        elif field.cpp_type == field.CPPTYPE_INT32:
+            return True
+        elif field.cpp_type == field.CPPTYPE_INT64:
+            return True
+        elif field.cpp_type == field.CPPTYPE_INT64:
+            return True
+        elif field.cpp_type == field.CPPTYPE_UINT32:
+            return True
+        elif field.cpp_type == field.CPPTYPE_UINT64:
+            return True
+        else:
+            return False
+
     def field_scalar_type_name(self, field):
         if field.cpp_type == field.CPPTYPE_BOOL:
             return "bool"
@@ -101,7 +168,7 @@ class ProtoReflectionUtil:
         if field.cpp_type == field.CPPTYPE_INT64:
             return "int64_t"
         if field.cpp_type == field.CPPTYPE_STRING:
-            return "std::string"
+            return "::std::string"
         if field.cpp_type == field.CPPTYPE_UINT32:
             return "uint32_t"
         if field.cpp_type == field.CPPTYPE_UINT64:
@@ -131,6 +198,13 @@ class ProtoReflectionUtil:
         if entry_fields[1].name != 'value':
             return False
         return True
+    
+    def _underline_name_to_camel(self, name):
+        sub_name_list = name.split('_')
+        camel_name = ''
+        for sub_name in sub_name_list:
+            camel_name = camel_name + sub_name[0].upper() + sub_name[1:]
+        return camel_name
 
 def _ToValidVarName(s):
     return re.sub("[^a-zA-Z0-9]", "_", s)
