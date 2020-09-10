@@ -150,6 +150,12 @@ PYBIND11_MODULE({{ python_module_name }}, m) {
     registry.def("CopyFrom", (void ({{ cls.name }}::*)(const {{ cls.name }}&))&{{ cls.name }}::CopyFrom);
     registry.def("Move", &{{ cls.name }}::__Move__);
     registry.def("__id__", &{{ cls.name }}::__Id__);
+
+{% for oneof in util.message_type_oneofs(cls) %}
+    registry.def_property_readonly_static("{{ util.oneof_name(oneof).upper() }}_NOT_SET",
+        [](const pybind11::object&){ return _{{ cls.name }}_::{{ util.oneof_name(oneof).upper() }}_NOT_SET; });
+{% endfor %}{# oneofs #}
+
 {% for field in util.message_type_fields(cls) %}
 
 {% if util.field_has_required_or_optional_label(field) %}
