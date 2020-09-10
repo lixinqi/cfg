@@ -205,15 +205,17 @@ class _{{ cls.name }}_ {
  public:
 {% if util.field_is_message_type(field) %}
   bool has_{{ util.field_name(field) }}() const {
-    return !({{ util.field_name(field) }}_).__Empty__();
+    return has_{{ util.field_name(field) }}_;
   }
   const {{ util.field_type_name(field) }}& {{ util.field_name(field) }}() const {
     return {{ util.field_name(field) }}_;
   }
   void clear_{{ util.field_name(field) }}() {
     {{ util.field_name(field) }}_.Clear();
+    has_{{ util.field_name(field) }}_ = false;
   }
   {{ util.field_type_name(field) }}* mutable_{{ util.field_name(field) }}() {
+    has_{{ util.field_name(field) }}_ = true;
     return &{{ util.field_name(field) }}_;
   }
 {% else %}
@@ -243,10 +245,9 @@ class _{{ cls.name }}_ {
     return &{{ util.field_name(field) }}_;
   }
 {% endif %}{# field string type #}
- protected:
-  bool has_{{ util.field_name(field) }}_;
 {% endif %}{# field_type #}
  protected:
+  bool has_{{ util.field_name(field) }}_;
   {{ util.field_type_name(field) }} {{ util.field_name(field) }}_;
 {% elif util.field_has_repeated_label(field) %}
   // repeated field {{ util.field_name(field) }}
